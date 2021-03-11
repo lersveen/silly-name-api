@@ -1,5 +1,6 @@
 import sys
 import random
+import logging
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -7,6 +8,8 @@ from requests.packages.urllib3.util.retry import Retry
 from titlecase import titlecase
 
 arg = sys.argv[1]
+
+logging.basicConfig(encoding='utf-8', level=logging.ERROR, stream=sys.stdout)
 
 
 def start_session(retries=None, session=None, backoff_factor=0, status_forcelist=(500, 502, 503, 504)):
@@ -75,7 +78,6 @@ def find_topic_nouns(topic):
         try_params.update(params)
         try_params.update(item)
         param_str = params_to_str(try_params)
-        print(param_str)
         result = get_word(param_str)
 
         if result:
@@ -96,6 +98,8 @@ def find_topic_nouns(topic):
 
 
 def find_adjective(nouns):
+    adj = ''
+
     for noun in nouns:
         params = {
             'rel_jjb': noun,
@@ -119,6 +123,10 @@ def find_adjective(nouns):
             match_noun = noun
             break
 
+    if not adj:
+        logging.error('Found no adjective to match any of the nouns')
+        adj = match_noun = None
+
     return adj, match_noun
 
 
@@ -141,11 +149,11 @@ def get_word(param_str: str):
         return result
 
     except ValueError as value_error:
-        print(value_error)
+        logging.info(value_error)
         return None
 
     except Exception as error:
-        print('Failed getting results from Datamuse API', error)
+        logging.error('Failed getting results from Datamuse API', error, exc_info=True)
         return None
 
 
@@ -156,4 +164,7 @@ if __name__ == '__main__':
     random.shuffle(nouns)
     adj, noun = find_adjective(nouns)
 
-    print(titlecase(f'{adj} {noun}'))
+    if adj and noun:
+        print(titlecase(f'{adj} {noun}'))
+    else:
+        print('We could not come up with anything silly enough')
